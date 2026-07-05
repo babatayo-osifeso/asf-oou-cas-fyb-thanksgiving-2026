@@ -1,47 +1,47 @@
+const firebaseConfig = {
+apiKey: "AIzaSyCXOmhYwZvHGoCUw5ISZkHJVgGSCa74DKY",
+authDomain: "asf-guestbook.firebaseapp.com",
+projectId: "asf-guestbook",
+storageBucket: "asf-guestbook.firebasestorage.app",
+messagingSenderId: "931111844841",
+appId: "1:931111844841:web:f19b4c8c47ba5f85e7a978",
+measurementId: "G-SG8BRZ9FC6"
+};
+
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
+const db = firebase.firestore();
+
 // ================= PERFORMANCE & SECURITY BUFFERED SCRIPT =================
 document.addEventListener("DOMContentLoaded", () => {
 
     const hamburger = document.getElementById("hamburger");
     const navLinks = document.getElementById("navLinks");
+    const navbar = document.getElementById("navbar");
+const backToTop = document.getElementById("backToTop");
+const sections = document.querySelectorAll("section");
+const navLinksAll = document.querySelectorAll(".nav-link");
 
     const safeAddListener = (el, event, handler) => {
         if (el) el.addEventListener(event, handler);
     };
 
     safeAddListener(hamburger, "click", (e) => {
-        e.stopPropagation();
-        navLinks.classList.toggle("show");
-        hamburger.classList.toggle("active");
-    });
+    e.stopPropagation();
+    if (navLinks) navLinks.classList.toggle("show");
+    if (hamburger) hamburger.classList.toggle("active");
+});
 
     document.querySelectorAll(".nav-link").forEach(link => {
-        link.addEventListener("click", () => {
-            navLinks.classList.remove("show");
-            hamburger.classList.remove("active");
-        });
+    safeAddListener(link, "click", () => {
+        if (navLinks) navLinks.classList.remove("show");
+        if (hamburger) hamburger.classList.remove("active");
     });
+    }); 
 
-    document.addEventListener("click", (e) => {
-        if (!navLinks.contains(e.target) && !hamburger.contains(e.target)) {
-            navLinks.classList.remove("show");
-            hamburger.classList.remove("active");
-        }
-    });
-
-
-
-    // Mobile Menu: Close when clicking outside
-    document.addEventListener("click", (e) => {
-    if (!navLinks || !hamburger) return;
-
-    const clickedInsideMenu = navLinks.contains(e.target);
-    const clickedHamburger = hamburger.contains(e.target);
-
-    if (!clickedInsideMenu && !clickedHamburger) {
-        navLinks.classList.remove("show");
-        hamburger.classList.remove("active");
-    }
-});
+    
 
     // Consolidated High-Performance Scroll Loop
     window.addEventListener("scroll", () => {
@@ -135,15 +135,13 @@ document.addEventListener("DOMContentLoaded", () => {
     counters.forEach(counter => elementObserver.observe(counter));
 
 
-    // ================= SECURITY-SAFE GUESTBOOK =================
-    const guestbookBtn = document.getElementById("submitGuestbook"); // Add id="submitGuestbook" to your HTML button
-    
-    window.addMessage = function () {
+// ================= FIREBASE GUESTBOOK =================
+
+const guestbookBtn = document.getElementById("submitGuestbook");
+
+window.addMessage = async function () {
     const nameInput = document.getElementById("guestName");
     const messageInput = document.getElementById("guestMessage");
-    const container = document.getElementById("messages");
-
-    if (!nameInput || !messageInput || !container) return;
 
     const name = nameInput.value.trim();
     const message = messageInput.value.trim();
@@ -153,55 +151,64 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    // Save message to localStorage
-    const messages = JSON.parse(localStorage.getItem("guestbook")) || [];
+    guestbookBtn.disabled = true;
 
-    messages.unshift({
-        name,
-        message
-    });
+    try {
+        await db.collection("guestbook").add({
+            name,
+            message,
+            time: firebase.firestore.FieldValue.serverTimestamp()
+        });
 
-    localStorage.setItem("guestbook", JSON.stringify(messages));
+        nameInput.value = "";
+        messageInput.value = "";
 
-   
-
-// Clear inputs
-nameInput.value = "";
-messageInput.value = "";
-
-// Reload messages from localStorage
-loadGuestbook();
-
-// Success notification
-showToast("Message added 🎉");
+        showToast("Message sent successfully!");
+    } catch (error) {
+        console.error(error);
+        showToast("Failed to send message");
+    } finally {
+        guestbookBtn.disabled = false;
+    }
 };
 
-// Support both inline onclick and button event listener
-safeAddListener(guestbookBtn, "click", window.addMessage);
+
+
 function loadGuestbook() {
     const container = document.getElementById("messages");
 
     if (!container) return;
 
-    container.innerHTML = "";
+    db.collection("guestbook")
+        .orderBy("time", "desc")
+        .onSnapshot((snapshot) => {
 
-    const messages = JSON.parse(localStorage.getItem("guestbook")) || [];
+            container.innerHTML = "";
 
-    messages.forEach((item) => {
-        const card = document.createElement("div");
-        card.className = "message-card";
+            snapshot.forEach((doc) => {
+                const data = doc.data();
 
-        const h4 = document.createElement("h4");
-        h4.textContent = item.name;
+                // Skip invalid or incomplete documents
+                if (!data.name || !data.message) return;
 
-        const p = document.createElement("p");
-        p.textContent = item.message;
+                const card = document.createElement("div");
+                card.className = "message-card";
 
-        card.appendChild(h4);
-        card.appendChild(p);
+                const h4 = document.createElement("h4");
+                h4.textContent = data.name;
 
-        container.appendChild(card);
-    });
+                const p = document.createElement("p");
+                p.textContent = data.message;
+
+                card.appendChild(h4);
+                card.appendChild(p);
+
+                container.appendChild(card);
+            });
+
+        }, (error) => {
+            console.error(error);
+        });
 }
 
 loadGuestbook();
