@@ -1,47 +1,47 @@
-const firebaseConfig = {
-apiKey: "AIzaSyCXOmhYwZvHGoCUw5ISZkHJVgGSCa74DKY",
-authDomain: "asf-guestbook.firebaseapp.com",
-projectId: "asf-guestbook",
-storageBucket: "asf-guestbook.firebasestorage.app",
-messagingSenderId: "931111844841",
-appId: "1:931111844841:web:f19b4c8c47ba5f85e7a978",
-measurementId: "G-SG8BRZ9FC6"
-};
-
-if (!firebase.apps.length) {
-    firebase.initializeApp(firebaseConfig);
-}
-
-const db = firebase.firestore();
-
 // ================= PERFORMANCE & SECURITY BUFFERED SCRIPT =================
 document.addEventListener("DOMContentLoaded", () => {
 
     const hamburger = document.getElementById("hamburger");
     const navLinks = document.getElementById("navLinks");
-    const navbar = document.getElementById("navbar");
-const backToTop = document.getElementById("backToTop");
-const sections = document.querySelectorAll("section");
-const navLinksAll = document.querySelectorAll(".nav-link");
 
     const safeAddListener = (el, event, handler) => {
         if (el) el.addEventListener(event, handler);
     };
 
     safeAddListener(hamburger, "click", (e) => {
-    e.stopPropagation();
-    if (navLinks) navLinks.classList.toggle("show");
-    if (hamburger) hamburger.classList.toggle("active");
-});
+        e.stopPropagation();
+        navLinks.classList.toggle("show");
+        hamburger.classList.toggle("active");
+    });
 
     document.querySelectorAll(".nav-link").forEach(link => {
-    safeAddListener(link, "click", () => {
-        if (navLinks) navLinks.classList.remove("show");
-        if (hamburger) hamburger.classList.remove("active");
+        link.addEventListener("click", () => {
+            navLinks.classList.remove("show");
+            hamburger.classList.remove("active");
+        });
     });
-    }); 
 
-    
+    document.addEventListener("click", (e) => {
+        if (!navLinks.contains(e.target) && !hamburger.contains(e.target)) {
+            navLinks.classList.remove("show");
+            hamburger.classList.remove("active");
+        }
+    });
+
+
+
+    // Mobile Menu: Close when clicking outside
+    document.addEventListener("click", (e) => {
+    if (!navLinks || !hamburger) return;
+
+    const clickedInsideMenu = navLinks.contains(e.target);
+    const clickedHamburger = hamburger.contains(e.target);
+
+    if (!clickedInsideMenu && !clickedHamburger) {
+        navLinks.classList.remove("show");
+        hamburger.classList.remove("active");
+    }
+});
 
     // Consolidated High-Performance Scroll Loop
     window.addEventListener("scroll", () => {
@@ -134,14 +134,70 @@ const navLinksAll = document.querySelectorAll(".nav-link");
     revealElements.forEach(el => elementObserver.observe(el));
     counters.forEach(counter => elementObserver.observe(counter));
 
+    // ================= COUNTDOWN TIMER =================
 
-// ================= FIREBASE GUESTBOOK =================
+// Target: Tomorrow at 9:00 AM
+const eventDate = new Date();
+eventDate.setDate(eventDate.getDate() + 1);
+eventDate.setHours(7, 0, 0, 0);
 
-const guestbookBtn = document.getElementById("submitGuestbook");
+const countdownTime = eventDate.getTime();
 
-window.addMessage = async function () {
+// Elements
+const daysEl = document.getElementById("days");
+const hoursEl = document.getElementById("hours");
+const minutesEl = document.getElementById("minutes");
+const secondsEl = document.getElementById("seconds");
+const eventMessage = document.getElementById("eventMessage");
+
+function updateCountdown() {
+    const now = new Date().getTime();
+    const distance = countdownTime - now;
+
+    // Event started
+    if (distance <= 0) {
+        if (daysEl) daysEl.innerText = "00";
+        if (hoursEl) hoursEl.innerText = "00";
+        if (minutesEl) minutesEl.innerText = "00";
+        if (secondsEl) secondsEl.innerText = "00";
+
+        if (eventMessage) {
+            eventMessage.innerText = "Event has started 🎉";
+            eventMessage.style.fontWeight = "bold";
+        }
+
+        clearInterval(timer);
+        return;
+    }
+
+    // Countdown calculations
+    const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+    if (daysEl) daysEl.innerText = String(days).padStart(2, "0");
+    if (hoursEl) hoursEl.innerText = String(hours).padStart(2, "0");
+    if (minutesEl) minutesEl.innerText = String(minutes).padStart(2, "0");
+    if (secondsEl) secondsEl.innerText = String(seconds).padStart(2, "0");
+
+    if (eventMessage) {
+        eventMessage.innerText = "";
+    }
+}
+
+// Run timer
+const timer = setInterval(updateCountdown, 1000);
+updateCountdown();
+    // ================= SECURITY-SAFE GUESTBOOK =================
+    const guestbookBtn = document.getElementById("submitGuestbook"); // Add id="submitGuestbook" to your HTML button
+    
+    window.addMessage = function () {
     const nameInput = document.getElementById("guestName");
     const messageInput = document.getElementById("guestMessage");
+    const container = document.getElementById("messages");
+
+    if (!nameInput || !messageInput || !container) return;
 
     const name = nameInput.value.trim();
     const message = messageInput.value.trim();
@@ -151,64 +207,55 @@ window.addMessage = async function () {
         return;
     }
 
-    guestbookBtn.disabled = true;
+    // Save message to localStorage
+    const messages = JSON.parse(localStorage.getItem("guestbook")) || [];
 
-    try {
-        await db.collection("guestbook").add({
-            name,
-            message,
-            time: firebase.firestore.FieldValue.serverTimestamp()
-        });
+    messages.unshift({
+        name,
+        message
+    });
 
-        nameInput.value = "";
-        messageInput.value = "";
+    localStorage.setItem("guestbook", JSON.stringify(messages));
 
-        showToast("Message sent successfully!");
-    } catch (error) {
-        console.error(error);
-        showToast("Failed to send message");
-    } finally {
-        guestbookBtn.disabled = false;
-    }
+   
+
+// Clear inputs
+nameInput.value = "";
+messageInput.value = "";
+
+// Reload messages from localStorage
+loadGuestbook();
+
+// Success notification
+showToast("Message added 🎉");
 };
 
-
-
+// Support both inline onclick and button event listener
+safeAddListener(guestbookBtn, "click", window.addMessage);
 function loadGuestbook() {
     const container = document.getElementById("messages");
 
     if (!container) return;
 
-    db.collection("guestbook")
-        .orderBy("time", "desc")
-        .onSnapshot((snapshot) => {
+    container.innerHTML = "";
 
-            container.innerHTML = "";
+    const messages = JSON.parse(localStorage.getItem("guestbook")) || [];
 
-            snapshot.forEach((doc) => {
-                const data = doc.data();
+    messages.forEach((item) => {
+        const card = document.createElement("div");
+        card.className = "message-card";
 
-                // Skip invalid or incomplete documents
-                if (!data.name || !data.message) return;
+        const h4 = document.createElement("h4");
+        h4.textContent = item.name;
 
-                const card = document.createElement("div");
-                card.className = "message-card";
+        const p = document.createElement("p");
+        p.textContent = item.message;
 
-                const h4 = document.createElement("h4");
-                h4.textContent = data.name;
+        card.appendChild(h4);
+        card.appendChild(p);
 
-                const p = document.createElement("p");
-                p.textContent = data.message;
-
-                card.appendChild(h4);
-                card.appendChild(p);
-
-                container.appendChild(card);
-            });
-
-        }, (error) => {
-            console.error(error);
-        });
+        container.appendChild(card);
+    });
 }
 
 loadGuestbook();
@@ -315,3 +362,16 @@ loadGuestbook();
     }
 });
 
+// ================= SMOOTH PRELOADER TRANSITION =================
+// Handled outside DOMContentLoaded window frame to hide immediately when assets finish loading
+window.addEventListener("load", () => {
+    const loader = document.getElementById("loader");
+    if (loader) {
+        loader.style.transition = "opacity 0.4s ease, visibility 0.4s ease";
+        loader.style.opacity = "0";
+        loader.style.visibility = "hidden";
+        setTimeout(() => {
+            loader.style.display = "none";
+        }, 400);
+    }
+});
