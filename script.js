@@ -315,16 +315,3 @@ loadGuestbook();
     }
 });
 
-// ================= SMOOTH PRELOADER TRANSITION =================
-// Handled outside DOMContentLoaded window frame to hide immediately when assets finish loading
-window.addEventListener("load", () => {
-    const loader = document.getElementById("loader");
-    if (loader) {
-        loader.style.transition = "opacity 0.4s ease, visibility 0.4s ease";
-        loader.style.opacity = "0";
-        loader.style.visibility = "hidden";
-        setTimeout(() => {
-            loader.style.display = "none";
-        }, 400);
-    }
-});
